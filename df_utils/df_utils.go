@@ -81,3 +81,12 @@ func ParseFloat(sVal string) float64 {
 	HandlerError(err)
 	return val 
 }
+func OpenFile(file string) *os.File {
+	f, err	:= os.Open(file)
+	HandlerError(err)
+	return f
+}
+
+func RegressionLinearPredict(m, b, x float64) float64 {
+	return (m*x + b)
+}

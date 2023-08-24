@@ -5,15 +5,14 @@ import (
 	"encoding/csv"
 	"fmt"
 	"math"
-	"os"
 
 	"github.com/gaby-iannu/df_utils"
+	"github.com/go-gota/gota/dataframe"
 	"github.com/sajari/regression"
 )
 
 func main() {
-	f, err	:= os.Open("../test.csv")
-	df_utils.HandlerError(err)
+	f := df_utils.OpenFile("../test.csv")
 	defer f.Close()
 
 	reader := csv.NewReader(f)
@@ -31,15 +30,16 @@ func main() {
 	r.SetObserved("Sales")
 	r.SetVar(0, "TV")
 
+	fmt.Println(testData)
 	for i, record := range testData {
 		if i == 0 {
 			continue
 		}
 		
 		// Parse  the observed Sales, or "y"
-		yObserved := df_utils.ParseFloat(record[3])
+		yObserved := df_utils.ParseFloat(record[4])
 		// Parse the TV value
-		tvVal := df_utils.ParseFloat(record[0])
+		tvVal := df_utils.ParseFloat(record[1])
 
 		// Predicted y with our trained model
 		yPredicted, _ := r.Predict([]float64{tvVal})
@@ -48,6 +48,14 @@ func main() {
 		// Add the to the mean absolute error
 		mAE += math.Abs(yObserved-yPredicted)/float64(len(testData))
 	}
-
+	
+	fmt.Println(selectDF())
 	fmt.Printf("MAE= %0.2f\n", mAE)
+}
+
+func selectDF() dataframe.DataFrame {
+	fa := df_utils.OpenFile("../create_training_test/Advertising.csv")
+	defer fa.Close()
+	df := dataframe.ReadCSV(fa)
+	return df.Describe().Select([]int{0,2,5})
 }
