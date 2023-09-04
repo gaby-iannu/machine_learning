@@ -2,10 +2,14 @@ package df_utils
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/go-gota/gota/dataframe"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
 )
 
 
@@ -89,4 +93,29 @@ func OpenFile(file string) *os.File {
 
 func RegressionLinearPredict(m, b, x float64) float64 {
 	return (m*x + b)
+}
+
+func CreateHistogram(df dataframe.DataFrame) []string{
+	var fileName []string
+
+	fileName = make([]string, df.Ncol())
+	for j, col := range df.Names() {
+		plotVals := make(plotter.Values, df.Nrow())
+		for i, floatVal := range df.Col(col).Float() {
+			plotVals[i] = floatVal
+		}
+		p := plot.New()
+
+		p.Title.Text = fmt.Sprintf("Histogram of a %s", col)
+		h,err := plotter.NewHist(plotVals, 16)
+		HandlerError(err)
+
+		h.Normalize(1)
+		p.Add(h)
+		fileName[j] = fmt.Sprintf("%s%s",col, "_hist.png")
+		err = p.Save(4*vg.Inch, 4*vg.Inch, fileName[j])
+		HandlerError(err)
+	}
+
+	return fileName
 }
