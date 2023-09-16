@@ -3,10 +3,14 @@ package df_utils
 import (
 	"bufio"
 	"fmt"
+	"math"
+	"math/rand"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/go-gota/gota/dataframe"
+	"github.com/gonum/matrix/mat64"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
@@ -118,4 +122,50 @@ func CreateHistogram(df dataframe.DataFrame) []string{
 	}
 
 	return fileName
+}
+
+func LogisticRegression(features *mat64.Dense, labels []float64, numSteps int, learningRate float64) []float64 {
+	var weights []float64
+
+	_,numWeights := features.Dims()
+	weights = make([]float64, numWeights)
+	s := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(s)
+
+	for i,_ := range weights {
+		weights[i] = r.Float64()
+	}
+	
+	for i:=0; i<numSteps; i++ {
+		var sumError float64
+		for j,label := range labels {
+			
+			featureRow := mat64.Row(nil, j, features)
+			pred := logistic(featureRow[0]*weights[0])
+			// featureRow[1]*weights[1]
+			predError := label - pred
+			sumError += math.Pow(predError, 2)
+			for k:=0; k<len(featureRow); k++ {
+				weights[k] += learningRate*predError*pred*(1-pred)*featureRow[k]  
+			}
+		}
+	}
+	return weights
+}
+
+func logistic(x float64) float64 {
+	return 1 / (1 + math.Exp(-x))
+}
+
+func LogisticRegresionPredict(score float64) float64 {
+
+	m1 := -0.48
+	m2 := 1.54
+	p := 1 / (1 + math.Exp(-m1 * score + m2))
+
+	if p > 0.5 {
+		return 1.0
+	}
+
+	return 0.0
 }
