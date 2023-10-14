@@ -3,6 +3,7 @@ package df_utils
 import (
 	"bufio"
 	"fmt"
+	"image/color"
 	"math"
 	"math/rand"
 	"os"
@@ -169,3 +170,60 @@ func LogisticRegresionPredict(score float64) float64 {
 
 	return 0.0
 }
+
+/*
+	pathToCsv: Nombre del CSV
+	yColumnName: Nombre de la columna Y a filtrar del df 
+	xColumnName: Nombre de la columna X a filtrar del df 
+	xLabel: Texto eje X
+	yLabel: Texto eje Y
+	plotterName: Nombre de la imagen guardada
+*/
+func CreateScatterPlot(pathToCsv, yColumnName, xColumnName, xLabel, yLabel, plotterName  string) {
+	df := CreateDataFrame(pathToCsv)
+	yVals := df.Col(yColumnName).Float()
+
+	pts := make(plotter.XYs, df.Nrow())
+
+	for i,floatVal := range df.Col(xColumnName).Float() {
+		pts[i].X = floatVal
+		pts[i].Y = yVals[i]
+	}
+
+	p := plot.New()
+	p.X.Label.Text = xLabel
+	p.Y.Label.Text = yLabel
+	p.Add(plotter.NewGrid())
+
+	scatter, err := plotter.NewScatter(pts)
+	HandlerError(err)
+
+	scatter.GlyphStyle.Color = color.RGBA{R:255, B:128, A:255}
+	scatter.GlyphStyle.Radius = vg.Points(3)
+
+	p.Add(scatter)
+	err = p.Save(4*vg.Inch, 4*vg.Inch, plotterName)
+	HandlerError(err)
+}
+
+// func a(b func(v1, v2 []float64, row int)plotter.XYs) {
+// 	var pts plotter.XYs
+
+// 	if b == nil {
+// 		b = func(v1, v2 []float64, row int)plotter.XYs {
+// 			p := make(plotter.XYs, row)
+			
+// 			for i,v := range v1 {
+// 				p[i].X = v   
+// 				p[i].Y = v2[i]
+// 			}
+
+// 			return p
+// 		}
+// 	}
+
+// 	pts = b(nil, nil, 1)
+// 	fmt.Println(pts)
+// }
+
+
