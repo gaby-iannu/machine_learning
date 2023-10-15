@@ -172,38 +172,75 @@ func LogisticRegresionPredict(score float64) float64 {
 }
 
 /*
-	pathToCsv: Nombre del CSV
-	yColumnName: Nombre de la columna Y a filtrar del df 
-	xColumnName: Nombre de la columna X a filtrar del df 
-	xLabel: Texto eje X
-	yLabel: Texto eje Y
-	plotterName: Nombre de la imagen guardada
+	PathToCsv: Nombre del CSV
+	YColName: Nombre de la columna Y a filtrar del df 
+	XColnName: Nombre de la columna X a filtrar del df 
+	XLabel: Texto eje X
+	YLabel: Texto eje Y
+	PlotterFile: Nombre de la imagen guardada
+	VgPoints:......
+	R: Puntero a uint8
+	G: Puntero a uint8
+	B: Puntero a uint8
+	A: Puntero a uint8
+	Style: Glyph, Line 
 */
-func CreateScatterPlot(pathToCsv, yColumnName, xColumnName, xLabel, yLabel, plotterName  string) {
-	df := CreateDataFrame(pathToCsv)
-	yVals := df.Col(yColumnName).Float()
+type PlotConfig struct {
+	PathToCsv string
+	YColName string
+	XColName string
+	XLabel string
+	YLabel string
+	PloterFile string
+	VgPoints float64
+	R *uint8
+	G *uint8
+	B *uint8
+	A *uint8
+	Style string
+}
+
+func CreateScatterPlot(plotConfig PlotConfig) {
+	df := CreateDataFrame(plotConfig.PathToCsv)
+	yVals := df.Col(plotConfig.YColName).Float()
 
 	pts := make(plotter.XYs, df.Nrow())
 
-	for i,floatVal := range df.Col(xColumnName).Float() {
+	for i,floatVal := range df.Col(plotConfig.XColName).Float() {
 		pts[i].X = floatVal
 		pts[i].Y = yVals[i]
 	}
 
 	p := plot.New()
-	p.X.Label.Text = xLabel
-	p.Y.Label.Text = yLabel
+	p.X.Label.Text = plotConfig.XLabel
+	p.Y.Label.Text = plotConfig.YLabel
 	p.Add(plotter.NewGrid())
 
-	scatter, err := plotter.NewScatter(pts)
-	HandlerError(err)
+	if plotConfig.Style == "Glyph" {
+		scatter, err := plotter.NewScatter(pts)
+		HandlerError(err)
 
-	scatter.GlyphStyle.Color = color.RGBA{R:255, B:128, A:255}
-	scatter.GlyphStyle.Radius = vg.Points(3)
+		scatter.GlyphStyle.Color = color.RGBA{R:*plotConfig.R, B:*plotConfig.B, A:*plotConfig.A}
+		scatter.GlyphStyle.Radius = vg.Points(plotConfig.VgPoints)
 
-	p.Add(scatter)
-	err = p.Save(4*vg.Inch, 4*vg.Inch, plotterName)
-	HandlerError(err)
+		p.Add(scatter)
+		err = p.Save(4*vg.Inch, 4*vg.Inch, plotConfig.PloterFile)
+		HandlerError(err)
+
+	} else if plotConfig.Style == "Line" {
+		scatter, err := plotter.NewLine(pts)
+		HandlerError(err)
+
+		scatter.LineStyle.Width = vg.Points(plotConfig.VgPoints)
+		scatter.LineStyle.Color = color.RGBA{B: *plotConfig.B, A:*plotConfig.A}
+
+		p.Add(scatter)
+		err = p.Save(4*vg.Inch, 4*vg.Inch, plotConfig.PloterFile)
+		HandlerError(err)
+	} else {
+		panic("Style not configured")
+	}
+
 }
 
 // func a(b func(v1, v2 []float64, row int)plotter.XYs) {
