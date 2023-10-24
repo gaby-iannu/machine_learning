@@ -17,6 +17,22 @@ func main() {
 
 	fmt.Println(files)
 
-	df_utils.CreateScatterPlot("./fleet_data.csv", "Distance_Feature", "Speeding_Feature", "Speeding",
-	 "Distance", "fleet_data_scatter.png")
+	var  r uint8 = 255
+	var  b uint8 = 128
+	var  a uint8 = 255
+
+	plotConfig := df_utils.PlotConfig{
+		PathToCsv: "./fleet_data.csv",
+		YColName: "Distance_Feature",
+		XColName: "Speeding_Feature",
+		XLabel: "Speeding",
+		YLabel: "Distance",
+		PloterFile: "fleet_data_scatter.png",
+		VgPoints: 3,
+		R: &r,
+		B: &b,
+		A: &a,
+		Style: "Glyph",
+	}
+	df_utils.CreateScatterPlot(plotConfig)
 }
