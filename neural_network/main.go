@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"math"
@@ -215,6 +216,38 @@ func (n *neuralNetwork) print() {
 	fmt.Printf("\nbOut: %v\n\n", f)
 }
 
+func (n *neuralNetwork) predict(x *mat.Dense) (*mat.Dense, error) {
+	if n.wHidden == nil || n.bHidden == nil || n.wOut == nil || n.bOut == nil {
+		return nil, errors.New("the supplied neural network weights and biases are empty")
+	}
+
+	// Define the output of the neural network 
+	output := new(mat.Dense)
+	hiddenLayerInput := new(mat.Dense)
+	hiddenLayerActivations := new(mat.Dense)
+	outputLayerInput := new(mat.Dense)
+
+	addBHidden := func(_, col int, v float64) float64 {
+		return v + n.bHidden.At(0, col)
+	}
+
+	applySigmoid := func(_,_ int, v float64) float64 {
+		return sigmoid(v)
+	}
+
+	addBOut := func(_, col int, v float64) float64 {
+		return v + n.bOut.At(0, col)
+	}
+
+	hiddenLayerInput.Mul(x, n.wHidden)
+	hiddenLayerInput.Apply(addBHidden, hiddenLayerInput)
+	hiddenLayerActivations.Apply(applySigmoid, hiddenLayerInput)
+	outputLayerInput.Mul(hiddenLayerActivations, n.wOut)
+	outputLayerInput.Apply(addBOut, outputLayerInput)
+	output.Apply(applySigmoid, outputLayerInput)
+	return output, nil
+}
+
 func buildConfigCase1() neuralNetConfig {
 	// Define our network architecture and
 	// learning parameters
@@ -244,6 +277,112 @@ func buildInputAndLabelsCase1() (*mat.Dense, *mat.Dense) {
 	return input, labels
 }
 
+func buildInputAndLabelsCase2(path string) (*mat.Dense,*mat.Dense) {
+	f := df_utils.OpenFile(path)
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+	records,err := reader.ReadAll()
+	df_utils.HandlerError(err)
+
+	// inputsData and labelsData will hold all the
+	// float values that will eventually be
+	// used to form our matrices
+	inputsData := make([]float64, 4*len(records))
+	labelsData := make([]float64, 3*len(records))
+	id := 0
+	ld := 0
+	for i, record := range records {
+		if i == 0 {
+			continue
+		}
+		
+		// Loop over the float columns
+		for j, v := range record {
+			if j == len(record) - 1 {
+				continue
+			}
+			value := df_utils.ParseFloat(v)
+			if j == 4 || j == 5 || j == 6 {
+				labelsData[ld] = value
+				ld++
+				continue
+			}
+
+			inputsData[id] = value
+			id++
+		}
+	}
+
+	// Form the matrices
+	inputs := mat.NewDense(len(records),4, inputsData)
+	labels := mat.NewDense(len(records),3, labelsData)
+	return inputs, labels
+}
+
+func buildConfigCase2() neuralNetConfig {
+	return neuralNetConfig {
+		inputNeurons: 4,
+		outputNeurons: 3,
+		hiddenNeurons: 3,
+		numEpochs: 5000,
+		learningRate: 0.3,
+	}
+}
+
+func buildTestInput() *mat.Dense {
+	f := df_utils.OpenFile("./test.csv")
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+	records,err := reader.ReadAll()
+	df_utils.HandlerError(err)
+
+	inputsData := make([]float64, 4*len(records))
+
+	for _,record := range records {
+
+		// Loop over the float columns
+		for j, v := range record {
+			if j == len(record) - 1 {
+				continue
+			}
+			value := df_utils.ParseFloat(v)
+
+			inputsData[j] = value
+		}
+	}
+
+	inputs := mat.NewDense(len(records),4, inputsData)
+	return inputs
+}
+
+func accuracy(predictions, labels *mat.Dense) {
+
+	// calculate accuracy of our model
+	var truePosNeg int
+	numPreds,_ := predictions.Dims()
+
+	for i:=0; i<numPreds ; i++ {
+		// Get the label
+		labelRow := mat.Row(nil, i, labels)
+		var species int 
+		for j, label := range labelRow {
+			if label == 1.0 {
+				species = j
+				break
+			}
+		}
+		// Accumulate the true positive/negative count
+		if predictions.At(i, species) == floats.Max(mat.Row(nil, i, predictions)) {
+			truePosNeg++
+		}
+	}
+
+	accuracyVal := float64(truePosNeg)/float64(numPreds)
+	fmt.Printf("Accuracy: %.2f\n", accuracyVal)
+}
+
 func main() {
 	var network *neuralNetwork
 
@@ -263,6 +402,13 @@ func main() {
 		df_utils.HandlerError(err)
 		break
 	case 2:
+		network = newNeuralNetwork(buildConfigCase2())
+		err = network.train(buildInputAndLabelsCase2("./train.csv"))
+		df_utils.HandlerError(err)
+		testInputs, testLabels := buildInputAndLabelsCase2("./test.csv")
+		result,err := network.predict(testInputs)
+		df_utils.HandlerError(err)
+		accuracy(result, testLabels)
 		break
 	default:
 		panic("incorrect argument")
